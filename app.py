@@ -16,6 +16,26 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 create_tables()
 
 # -----------------------
+# ROOT ROUTE (IMPORTANT)
+# -----------------------
+
+@app.route("/")
+def home():
+    return jsonify({
+        "message": "SkillSift Backend Running Successfully"
+    })
+
+
+# -----------------------
+# HEALTH CHECK
+# -----------------------
+
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"})
+
+
+# -----------------------
 # LOGIN
 # -----------------------
 
@@ -36,7 +56,6 @@ def login():
     )
 
     row = cur.fetchone()
-
     conn.close()
 
     if row:
@@ -68,7 +87,6 @@ def upload_resume():
         return jsonify({"ok": False})
 
     filename = file.filename
-
     save_path = os.path.join(UPLOAD_FOLDER, filename)
 
     file.save(save_path)
@@ -76,7 +94,6 @@ def upload_resume():
     result = analyze_resume_file(save_path)
 
     skills = ",".join(result["skills"])
-
     score = result["score"]
 
     conn = connect()
@@ -219,7 +236,7 @@ def cluster_chart():
             if skill == "":
                 continue
 
-            clusters[skill] = clusters.get(skill,0) + 1
+            clusters[skill] = clusters.get(skill, 0) + 1
 
     return jsonify(clusters)
 
@@ -255,6 +272,5 @@ if __name__ == "__main__":
 
     app.run(
         host="0.0.0.0",
-        port=5000,
-        debug=True
+        port=5000
     )
