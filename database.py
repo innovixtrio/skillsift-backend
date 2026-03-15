@@ -20,7 +20,7 @@ def create_tables():
     )
     """)
 
-    # RESUME DATA
+    # RESUMES
     c.execute("""
     CREATE TABLE IF NOT EXISTS resumes(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
