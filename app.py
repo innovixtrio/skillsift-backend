@@ -14,7 +14,7 @@ UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # -----------------------
-# CREATE DATABASE + USERS
+# DATABASE INIT
 # -----------------------
 
 create_tables()
@@ -48,7 +48,6 @@ def home():
         "message": "SkillSift Backend Running Successfully"
     })
 
-
 # -----------------------
 # HEALTH CHECK
 # -----------------------
@@ -57,9 +56,8 @@ def home():
 def health():
     return jsonify({"status": "ok"})
 
-
 # -----------------------
-# DEBUG USERS (VERY USEFUL)
+# DEBUG USERS
 # -----------------------
 
 @app.route("/debug_users")
@@ -75,7 +73,6 @@ def debug_users():
 
     return jsonify(rows)
 
-
 # -----------------------
 # LOGIN
 # -----------------------
@@ -83,7 +80,13 @@ def debug_users():
 @app.route("/login", methods=["POST"])
 def login():
 
-    data = request.json
+    data = request.get_json()
+
+    if not data:
+        return jsonify({
+            "ok": False,
+            "message": "No JSON received"
+        })
 
     email = data.get("email")
     password = data.get("password")
@@ -116,7 +119,6 @@ def login():
         "message": "Invalid login"
     })
 
-
 # -----------------------
 # UPLOAD RESUME
 # -----------------------
@@ -130,7 +132,10 @@ def upload_resume():
     file = request.files.get("file")
 
     if not file:
-        return jsonify({"ok": False, "message": "No file uploaded"})
+        return jsonify({
+            "ok": False,
+            "message": "No file uploaded"
+        })
 
     filename = file.filename
     save_path = os.path.join(UPLOAD_FOLDER, filename)
@@ -165,7 +170,6 @@ def upload_resume():
 
     return jsonify(result)
 
-
 # -----------------------
 # GET RESUMES
 # -----------------------
@@ -184,15 +188,17 @@ def get_resumes():
 
     return jsonify(df.to_dict(orient="records"))
 
-
 # -----------------------
-# FEEDBACK SUBMIT
+# SUBMIT FEEDBACK
 # -----------------------
 
 @app.route("/submit_feedback", methods=["POST"])
 def feedback():
 
-    data = request.json
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"ok": False})
 
     conn = connect()
     cur = conn.cursor()
@@ -201,10 +207,10 @@ def feedback():
     INSERT INTO feedback(name,email,rating,comment,timestamp)
     VALUES(?,?,?,?,datetime('now'))
     """,(
-        data["name"],
-        data["email"],
-        data["rating"],
-        data["comment"]
+        data.get("name"),
+        data.get("email"),
+        data.get("rating"),
+        data.get("comment")
     ))
 
     conn.commit()
@@ -212,9 +218,8 @@ def feedback():
 
     return jsonify({"ok": True})
 
-
 # -----------------------
-# GET FEEDBACK
+# GET FEEDBACK STATS
 # -----------------------
 
 @app.route("/get_feedback")
@@ -232,7 +237,6 @@ def get_feedback():
     counts = df["rating"].value_counts().to_dict()
 
     return jsonify(counts)
-
 
 # -----------------------
 # ADMIN USERS
@@ -254,9 +258,8 @@ def admin_users():
         "users": df.to_dict(orient="records")
     })
 
-
 # -----------------------
-# SKILL CLUSTER ANALYSIS
+# SKILL CLUSTERS
 # -----------------------
 
 @app.route("/admin/cluster_chart")
@@ -286,9 +289,8 @@ def cluster_chart():
 
     return jsonify(clusters)
 
-
 # -----------------------
-# EXPORT CSV
+# DOWNLOAD REPORT
 # -----------------------
 
 @app.route("/download_report")
@@ -308,7 +310,6 @@ def download_report():
     df.to_csv(path, index=False)
 
     return send_file(path, as_attachment=True)
-
 
 # -----------------------
 # RUN SERVER
