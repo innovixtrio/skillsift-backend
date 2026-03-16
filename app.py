@@ -13,10 +13,33 @@ CORS(app)
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# -----------------------
+# CREATE DATABASE + USERS
+# -----------------------
+
 create_tables()
 
+def ensure_default_users():
+    conn = connect()
+    cur = conn.cursor()
+
+    cur.execute("""
+    INSERT OR IGNORE INTO users(email,password,role)
+    VALUES('admin@gmail.com','admin123','admin')
+    """)
+
+    cur.execute("""
+    INSERT OR IGNORE INTO users(email,password,role)
+    VALUES('user@gmail.com','user123','user')
+    """)
+
+    conn.commit()
+    conn.close()
+
+ensure_default_users()
+
 # -----------------------
-# ROOT ROUTE (IMPORTANT)
+# ROOT ROUTE
 # -----------------------
 
 @app.route("/")
@@ -36,6 +59,24 @@ def health():
 
 
 # -----------------------
+# DEBUG USERS (VERY USEFUL)
+# -----------------------
+
+@app.route("/debug_users")
+def debug_users():
+
+    conn = connect()
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM users")
+    rows = cur.fetchall()
+
+    conn.close()
+
+    return jsonify(rows)
+
+
+# -----------------------
 # LOGIN
 # -----------------------
 
@@ -46,6 +87,12 @@ def login():
 
     email = data.get("email")
     password = data.get("password")
+
+    if not email or not password:
+        return jsonify({
+            "ok": False,
+            "message": "Missing credentials"
+        })
 
     conn = connect()
     cur = conn.cursor()
@@ -80,11 +127,10 @@ def upload_resume():
     name = request.form.get("name")
     email = request.form.get("email")
     mobile = request.form.get("mobile")
-
     file = request.files.get("file")
 
     if not file:
-        return jsonify({"ok": False})
+        return jsonify({"ok": False, "message": "No file uploaded"})
 
     filename = file.filename
     save_path = os.path.join(UPLOAD_FOLDER, filename)
@@ -121,7 +167,7 @@ def upload_resume():
 
 
 # -----------------------
-# GET ALL RESUMES
+# GET RESUMES
 # -----------------------
 
 @app.route("/get_resumes")
