@@ -16,7 +16,6 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # -----------------------
 # DATABASE INIT
 # -----------------------
-
 create_tables()
 
 def ensure_default_users():
@@ -41,7 +40,6 @@ ensure_default_users()
 # -----------------------
 # ROOT ROUTE
 # -----------------------
-
 @app.route("/")
 def home():
     return jsonify({
@@ -51,7 +49,6 @@ def home():
 # -----------------------
 # HEALTH CHECK
 # -----------------------
-
 @app.route("/health")
 def health():
     return jsonify({"status": "ok"})
@@ -59,27 +56,52 @@ def health():
 # -----------------------
 # DEBUG USERS
 # -----------------------
-
 @app.route("/debug_users")
 def debug_users():
+    conn = connect()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users")
+    rows = cur.fetchall()
+    conn.close()
+    return jsonify(rows)
+
+# -----------------------
+# REGISTER
+# -----------------------
+@app.route("/register", methods=["POST"])
+def register():
+    data = request.get_json()
+    if not data:
+        return jsonify({"ok": False, "message": "No JSON received"}), 400
+
+    email = (data.get("email") or "").strip()
+    password = (data.get("password") or "").strip()
+    # optional name/mobile if you want to store later
+    # name = (data.get("name") or "").strip()
+    # mobile = (data.get("mobile") or "").strip()
+
+    if not email or not password:
+        return jsonify({"ok": False, "message": "Missing email or password"}), 400
 
     conn = connect()
     cur = conn.cursor()
 
-    cur.execute("SELECT * FROM users")
-    rows = cur.fetchall()
+    cur.execute("SELECT email FROM users WHERE email = ?", (email,))
+    if cur.fetchone():
+        conn.close()
+        return jsonify({"ok": False, "message": "Email already registered"}), 409
 
+    cur.execute("INSERT INTO users(email, password, role) VALUES (?, ?, ?)", (email, password, "user"))
+    conn.commit()
     conn.close()
 
-    return jsonify(rows)
+    return jsonify({"ok": True, "message": "Registered successfully", "role": "user"})
 
 # -----------------------
 # LOGIN
 # -----------------------
-
 @app.route("/login", methods=["POST"])
 def login():
-
     data = request.get_json()
 
     if not data:
@@ -122,10 +144,8 @@ def login():
 # -----------------------
 # UPLOAD RESUME
 # -----------------------
-
 @app.route("/upload_resume", methods=["POST"])
 def upload_resume():
-
     name = request.form.get("name")
     email = request.form.get("email")
     mobile = request.form.get("mobile")
@@ -144,8 +164,8 @@ def upload_resume():
 
     result = analyze_resume_file(save_path)
 
-    skills = ",".join(result["skills"])
-    score = result["score"]
+    skills = ",".join(result.get("skills", []))
+    score = result.get("score", 0)
 
     conn = connect()
     cur = conn.cursor()
@@ -173,10 +193,8 @@ def upload_resume():
 # -----------------------
 # GET RESUMES
 # -----------------------
-
 @app.route("/get_resumes")
 def get_resumes():
-
     conn = connect()
 
     df = pd.read_sql_query(
@@ -191,10 +209,8 @@ def get_resumes():
 # -----------------------
 # SUBMIT FEEDBACK
 # -----------------------
-
 @app.route("/submit_feedback", methods=["POST"])
 def feedback():
-
     data = request.get_json()
 
     if not data:
@@ -221,10 +237,8 @@ def feedback():
 # -----------------------
 # GET FEEDBACK STATS
 # -----------------------
-
 @app.route("/get_feedback")
 def get_feedback():
-
     conn = connect()
 
     df = pd.read_sql_query(
@@ -241,10 +255,8 @@ def get_feedback():
 # -----------------------
 # ADMIN USERS
 # -----------------------
-
 @app.route("/admin/users")
 def admin_users():
-
     conn = connect()
 
     df = pd.read_sql_query(
@@ -261,10 +273,8 @@ def admin_users():
 # -----------------------
 # SKILL CLUSTERS
 # -----------------------
-
 @app.route("/admin/cluster_chart")
 def cluster_chart():
-
     conn = connect()
 
     df = pd.read_sql_query(
@@ -277,14 +287,10 @@ def cluster_chart():
     clusters = {}
 
     for s in df["skills"].dropna():
-
         for skill in s.split(","):
-
             skill = skill.strip()
-
             if skill == "":
                 continue
-
             clusters[skill] = clusters.get(skill, 0) + 1
 
     return jsonify(clusters)
@@ -292,10 +298,8 @@ def cluster_chart():
 # -----------------------
 # DOWNLOAD REPORT
 # -----------------------
-
 @app.route("/download_report")
 def download_report():
-
     conn = connect()
 
     df = pd.read_sql_query(
@@ -314,10 +318,9 @@ def download_report():
 # -----------------------
 # RUN SERVER
 # -----------------------
-
 if __name__ == "__main__":
-
     app.run(
         host="0.0.0.0",
-        port=5000
+        port=5000,
+        debug=True
     )

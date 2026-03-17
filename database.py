@@ -7,7 +7,6 @@ def connect():
     return sqlite3.connect(DB_PATH, check_same_thread=False)
 
 def create_tables():
-
     conn = connect()
     c = conn.cursor()
 
