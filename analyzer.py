@@ -1,4 +1,5 @@
 import os
+import re
 from pdfminer.high_level import extract_text
 import docx
 
@@ -7,21 +8,11 @@ import docx
 # -----------------------------------
 
 skills_db = [
-
-# programming
 "python","java","c","c++","html","css","javascript",
 "react","node","django","flask",
-
-# data science
 "machine learning","data science","pandas","numpy","tensorflow",
-
-# mobile
 "flutter","android","kotlin","swift",
-
-# ui ux
 "figma","ui","ux","photoshop",
-
-# business
 "management","marketing","finance","accounting",
 "sales","leadership","communication","excel","operations"
 ]
@@ -33,161 +24,142 @@ skills_db = [
 ds_course = [
 ["Machine Learning Crash Course","https://developers.google.com/machine-learning/crash-course"],
 ["Machine Learning by Andrew NG","https://www.coursera.org/learn/machine-learning"],
-["Data Scientist with Python","https://www.datacamp.com/tracks/data-scientist-with-python"]
 ]
 
 web_course = [
 ["React Crash Course","https://youtu.be/Dorf8i6lCuk"],
 ["Node.js Course","https://youtu.be/Oe421EPjeBE"],
-["Full Stack Developer","https://www.udacity.com/course/full-stack-web-developer-nanodegree--nd0044"]
 ]
 
 android_course = [
-["Android Development Course","https://youtu.be/fis26HvvDII"],
 ["Flutter Course","https://youtu.be/rZLR5olMR64"]
 ]
 
 uiux_course = [
-["Google UX Design","https://www.coursera.org/professional-certificates/google-ux-design"],
-["Adobe XD Course","https://youtu.be/68w2VwalD5w"]
+["Google UX Design","https://www.coursera.org/professional-certificates/google-ux-design"]
 ]
 
 business_course = [
-["Business Analytics","https://www.coursera.org/specializations/business-analytics"],
-["Marketing Fundamentals","https://www.coursera.org/learn/marketing"],
-["Finance for Managers","https://www.coursera.org/learn/finance"]
+["Business Analytics","https://www.coursera.org/specializations/business-analytics"]
 ]
 
-# -----------------------------------
-# VIDEOS
-# -----------------------------------
-
 resume_videos = [
-"https://youtu.be/Tt08KmFfIYQ",
-"https://youtu.be/y8YH0Qbu5h4",
-"https://youtu.be/u75hUSShvnc"
+"https://youtu.be/Tt08KmFfIYQ"
 ]
 
 interview_videos = [
-"https://youtu.be/HG68Ymazo18",
-"https://youtu.be/BOvAAoxM4vg"
+"https://youtu.be/HG68Ymazo18"
 ]
 
 # -----------------------------------
-# FILE TEXT EXTRACT
+# TEXT EXTRACTION
 # -----------------------------------
 
 def extract_docx(path):
-
     doc = docx.Document(path)
-
-    text=[]
-
-    for p in doc.paragraphs:
-        text.append(p.text)
-
-    return "\n".join(text)
+    return "\n".join([p.text for p in doc.paragraphs])
 
 
 def extract_file(path):
-
     if path.endswith(".pdf"):
         return extract_text(path)
-
     elif path.endswith(".docx"):
         return extract_docx(path)
-
     else:
         return open(path).read()
 
+# -----------------------------------
+# 🔥 NEW: EMAIL / PHONE / NAME
+# -----------------------------------
+
+def extract_email(text):
+    emails = re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", text)
+    return emails[0] if emails else "Not found"
+
+
+def extract_phone(text):
+    phones = re.findall(r"\+?\d[\d\s-]{8,13}\d", text)
+    return phones[0] if phones else "Not found"
+
+
+def extract_name(text):
+    lines = text.strip().split("\n")
+    for line in lines[:5]:  # first few lines
+        if len(line.split()) <= 4 and "@" not in line:
+            return line.strip()
+    return "User"
 
 # -----------------------------------
 # SKILL DETECTION
 # -----------------------------------
 
 def detect_skills(text):
-
-    text=text.lower()
-
-    found=[]
-
-    for s in skills_db:
-
-        if s in text:
-            found.append(s)
-
-    return list(set(found))
-
+    text = text.lower()
+    return list(set([s for s in skills_db if s in text]))
 
 # -----------------------------------
 # FIELD PREDICTION
 # -----------------------------------
 
 def predict_field(skills):
-
-    if "machine learning" in skills or "data science" in skills:
+    if "machine learning" in skills:
         return "Data Science"
-
-    if "react" in skills or "javascript" in skills:
+    if "react" in skills:
         return "Web Development"
-
-    if "flutter" in skills or "android" in skills:
+    if "flutter" in skills:
         return "Android Development"
-
-    if "ui" in skills or "figma" in skills:
+    if "figma" in skills:
         return "UI UX"
-
-    if "marketing" in skills or "finance" in skills:
+    if "marketing" in skills:
         return "Business"
-
     return "General"
 
-
 # -----------------------------------
-# ANALYSIS
+# MAIN ANALYSIS
 # -----------------------------------
 
 def analyze_resume_file(path):
 
-    text=extract_file(path)
+    text = extract_file(path)
 
-    skills=detect_skills(text)
+    # 🔥 EXTRACTION
+    email = extract_email(text)
+    phone = extract_phone(text)
+    name = extract_name(text)
 
-    field=predict_field(skills)
+    skills = detect_skills(text)
+    field = predict_field(skills)
+    score = min(100, len(skills) * 10)
 
-    score=min(100,len(skills)*10)
-
-    if field=="Data Science":
-        courses=ds_course
-
-    elif field=="Web Development":
-        courses=web_course
-
-    elif field=="Android Development":
-        courses=android_course
-
-    elif field=="UI UX":
-        courses=uiux_course
-
-    elif field=="Business":
-        courses=business_course
-
+    if field == "Data Science":
+        courses = ds_course
+    elif field == "Web Development":
+        courses = web_course
+    elif field == "Android Development":
+        courses = android_course
+    elif field == "UI UX":
+        courses = uiux_course
+    elif field == "Business":
+        courses = business_course
     else:
-        courses=[]
+        courses = []
 
-    tips=[
-    "Add more relevant skills",
-    "Add internships",
-    "Add projects",
-    "Add GitHub or portfolio"
+    tips = [
+        "Add more relevant skills",
+        "Add projects",
+        "Add internships",
+        "Improve formatting"
     ]
 
-    return{
-        "skills":skills,
-        "score":score,
-        "field":field,
-        "courses":courses,
-        "videos":resume_videos,
-        "interview":interview_videos,
-        "tips":tips
+    return {
+        "name": name,
+        "email": email,
+        "contact": phone,
+        "skills": skills,
+        "score": score,
+        "field": field,
+        "courses": courses,
+        "videos": resume_videos,
+        "interview": interview_videos,
+        "tips": tips
     }
